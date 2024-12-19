@@ -3,80 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salesforce OAuth Authentication</title>
+    <title>Salesforce OAuth Client Credentials Flow</title>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // OAuth 2.0 Implicit Flow setup for Salesforce
-            const clientId = '3MVG92ZJW.xbfBWPe6ybFgKqMUPJYrubGLDuCnCpD6UD_LOJSJIQpkr5KM57rw_g8Ba9cSxQXejpax8cl42W5'; // Replace with your Salesforce Connected App Consumer Key
-            const redirectUri = 'https://ghostcodervikash.github.io/demo'; // Redirect URI (same as your app URL)
-            const authorizationUrl = 'https://login.salesforce.com/services/oauth2/authorize';
-            const endpoint = 'https://unilever--cgtest.sandbox.my.site.com/services/apexrest/cecMiawSiteConfigAPI'; // Your Apex REST endpoint
+        // Salesforce credentials and endpoint details
+        const clientId = '<YOUR_SALESFORCE_CONSUMER_KEY>'; // Replace with your Salesforce Connected App Consumer Key
+        const clientSecret = '<YOUR_SALESFORCE_CONSUMER_SECRET>'; // Replace with your Salesforce Connected App Consumer Secret
+        const tokenUrl = 'https://login.salesforce.com/services/oauth2/token'; // Salesforce token URL
+        const apiUrl = 'https://unilever--cgtest.sandbox.my.site.com/services/apexrest/cecMiawSiteConfigAPI'; // Your Apex REST endpoint
 
-            // OAuth 2.0 Implicit Flow: Step 1 - Redirect user to Salesforce for authentication
-            function authenticateWithSalesforce() {
-                const oauthUrl = `${authorizationUrl}?response_type=token&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=api`;
-                
-                const iframe = document.createElement('iframe');
-                iframe.style.width = '0px';
-                iframe.style.height = '0px';
-                iframe.style.border = 'none';
-                iframe.src = oauthUrl;
-                
-                // Ensure body is available before appending iframe
-                if (document.body) {
-                    document.body.appendChild(iframe);
+        // Get the access token using the Client Credentials Flow
+        function getAccessToken() {
+            const formData = new URLSearchParams();
+            formData.append('grant_type', 'client_credentials');
+            formData.append('client_id', clientId);
+            formData.append('client_secret', clientSecret);
+
+            fetch(tokenUrl, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.access_token) {
+                    console.log('Access token received:', data.access_token);
+                    // Use the access token to make an API request
+                    makeApiRequest(data.access_token);
                 } else {
-                    console.error('Unable to append iframe - body is null');
+                    console.error('Failed to get access token:', data);
                 }
-            }
+            })
+            .catch(error => {
+                console.error('Error getting access token:', error);
+            });
+        }
 
-            // Step 2: Extract the access token from the URL fragment
-            function getAccessTokenFromUrl() {
-                const hashParams = new URLSearchParams(window.location.hash.substr(1));
-                return hashParams.get('access_token');
-            }
+        // Make the API call to your Apex REST API
+        function makeApiRequest(accessToken) {
+            const urlParam = 'https://ghostcodervikash.github.io/demo'; // Example URL parameter
 
-            // Step 3: Make the API call to Salesforce Apex REST API
-            function makeApiRequest(accessToken, urlParam) {
-                const apiUrl = `${endpoint}?url=${encodeURIComponent(urlParam)}`;
-
-                fetch(apiUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Log the API response
-                    console.log('Response:', data);
-
-                    // Display the data on the page
-                    document.getElementById('response').textContent = JSON.stringify(data, null, 2);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-            }
-
-            // Check if the access token is available in the URL (after redirect from Salesforce)
-            if (window.location.hash) {
-                const accessToken = getAccessTokenFromUrl();
-                if (accessToken) {
-                    console.log('Access token received:', accessToken);
-                    // Call the API with the received access token
-                    makeApiRequest(accessToken, 'https://ghostcodervikash.github.io/demo');
+            fetch(`${apiUrl}?url=${encodeURIComponent(urlParam)}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
                 }
-            } else {
-                // If no access token, start the authentication process
-                authenticateWithSalesforce();
-            }
-        });
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Handle the response from the API
+                console.log('API response:', data);
+                document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                console.error('API request error:', error);
+            });
+        }
+
+        // Trigger the process when the page loads
+        window.onload = function() {
+            getAccessToken();
+        };
     </script>
 </head>
 <body>
-    <h1>Salesforce OAuth Authentication in Background</h1>
+    <h1>Salesforce OAuth Client Credentials Flow</h1>
     <p>API Response will be shown below:</p>
     <pre id="response"></pre>
 </body>
